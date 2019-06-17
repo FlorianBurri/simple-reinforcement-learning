@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+import numpy as np
 
 UP = 0
 DOWN = 1
@@ -32,6 +32,7 @@ def render(state):
                 print(" *", end='')
     print("\n ___________________")
     print(" 0 0 0 1 1 1 2 2 1 0")
+
 
 def renderPath(path):
     ''' Renders a path in the gridworld
@@ -73,6 +74,9 @@ def env(state, action, render_s=False):
         print("Invalid action:", action)
         return -1
     
+    if state == GOAL:
+        return state, 0, True
+        
     nextState = state.copy()
     
     # take action
@@ -104,3 +108,43 @@ def env(state, action, render_s=False):
         render(nextState)
         
     return nextState, reward, goalReached
+
+
+def eGreedy(actionValues, epsilon):
+    '''Choose action based on action values
+    e-greedy
+    '''
+    if np.random.rand() < epsilon:
+        # chose random action
+        action = np.random.randint(4)
+    
+    else:
+        options = []
+        maxVal = np.max(actionValues)
+        for i in range(4):
+            if maxVal == actionValues[i]:
+                options.append(i)
+        action = np.random.choice(options)
+    
+    return action
+
+def dynamicProgramming(maxDelta=0):
+    V = np.zeros((7,10))
+    while True:
+        delta = 0
+        # loop over every state
+        for row in range(7):
+            for col in range(10):
+                value = V[row,col]
+                next_values = []
+                # try every action in this state
+                for action in range(4):
+                    nextState, reward, _ = env([row,col], action)
+                    nextValue = V[nextState[0], nextState[1]] + reward
+                    next_values.append(nextValue)
+                V[row,col] = max(next_values)
+                delta = max(delta, abs(value-V[row,col]))
+        
+        if delta <= maxDelta:
+            break
+    return V
