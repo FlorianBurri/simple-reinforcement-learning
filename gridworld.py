@@ -260,7 +260,7 @@ def dynamicProgramming(maxDelta=0):
                     # the state of the environment manualy:
                     env.state = [x,y]
                     nextState, reward, _ = env.step(action)
-                    nextValue = V[nextState[0], nextState[1]] + reward
+                    nextValue = V[tuple(nextState)] + reward
                     next_values.append(nextValue)
                     
                 V[x, y] = max(next_values)
@@ -280,14 +280,14 @@ def sarsa(alpha, epsilon, episodes, env, printRate=0):
         t = 0
         goalReached = False
         state = env.state
-        action = eGreedy(Q[env.state[0],env.state[1]], epsilon)
+        action = eGreedy(Q[tuple(env.state)], epsilon)
         while(not goalReached):
             _, reward, goalReached = env.step(action)
-            nextAction = eGreedy(Q[env.state[0],env.state[1]], epsilon)
+            nextAction = eGreedy(Q[tuple(env.state)], epsilon)
             # update action Values
-            Q[state[0], state[1], action] += alpha * (reward +
-                                 Q[env.state[0], env.state[1], nextAction]
-                                 - Q[state[0], state[1], action])
+            Q[tuple(state)][action] += alpha * (reward +
+                                 Q[tuple(env.state)][nextAction] -
+                                 Q[tuple(state)][action])
             state = env.state
             action = nextAction
             t += 1
@@ -308,11 +308,11 @@ def qLearning(alpha, epsilon, episodes, env, printRate=0):
         goalReached = False
         while(not goalReached):
             prevState = env.state
-            action = eGreedy(Q[prevState[0], prevState[1]], epsilon)
+            action = eGreedy(Q[tuple(prevState)], epsilon)
             _, reward, goalReached = env.step(action)
-            Q[prevState[0], prevState[1], action] += alpha * (reward +
-                                 np.max(Q[env.state[0], env.state[1]]) - 
-                                 Q[prevState[0], prevState[1], action])
+            Q[tuple(prevState)][action] += alpha * (reward +
+                                 np.max(Q[tuple(env.state)]) - 
+                                 Q[tuple(prevState)][action])
             t += 1
         
         if ((printRate != 0) and
@@ -327,7 +327,7 @@ def nStepSarsa(alpha, epsilon, n, episodes, env, printRate=0):
     Q = np.zeros((10,7,4))
     for episode in range(episodes):
         env.reset()
-        action = eGreedy(Q[env.state[0], env.state[1]], epsilon)
+        action = eGreedy(Q[tuple(env.state)], epsilon)
         R = [0]
         S = [env.state]
         A = [action]
@@ -343,17 +343,17 @@ def nStepSarsa(alpha, epsilon, n, episodes, env, printRate=0):
                 if goalReached:
                     T = t + 1
                 else:
-                    action = eGreedy(Q[state[0], state[1]], epsilon)
+                    action = eGreedy(Q[tuple(state)], epsilon)
                     A.append(action)
             
             tUpdate = t - n + 1
             if tUpdate >= 0:
                 G = np.sum(R[tUpdate+1 : tUpdate+n+1])
                 if not goalReached:
-                    G += Q[env.state[0], env.state[1], action]
+                    G += Q[tuple(env.state)][action]
                 
-                Q[S[tUpdate][0],S[tUpdate][1],A[tUpdate]] += alpha * (
-                        G - Q[S[tUpdate][0],S[tUpdate][1],A[tUpdate]])
+                Q[tuple(S[tUpdate])][A[tUpdate]] += alpha * (
+                        G - Q[tuple(S[tUpdate])][A[tUpdate]])
             t += 1
             if tUpdate == T-1:
                 break
