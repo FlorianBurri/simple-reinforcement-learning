@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from  matplotlib.patches import Rectangle
 from time import time
 
 
@@ -8,19 +7,19 @@ UP = 0
 DOWN = 1
 RIGHT = 2
 LEFT = 3
-START = [3,0]
-GOAL = [3,7]
+START = [0,3]
+GOAL = [7,3]
 
 
 class environment:
     def __init__(self):
         self.state = START
         self.path = [self.state]
-        self.shape = [7,10]
+        self.shape = [10,7]
         self.steps = []
     
     def reset(self):
-        self.state = [3, 0]
+        self.state = START
         self.path = [self.state]
         
     
@@ -44,24 +43,24 @@ class environment:
         nextState = self.state.copy()
         
         # take action
-        if action == UP and self.state[0] > 0:
-            nextState[0] -= 1
-        
-        elif action == DOWN and self.state[0] < 6:
-            nextState[0] += 1
-        
-        elif action == RIGHT and self.state[1] < 9:
+        if action == UP and self.state[1] < 6:
             nextState[1] += 1
         
-        elif action == LEFT and self.state[1] > 0:
+        elif action == DOWN and self.state[1] > 0:
             nextState[1] -= 1
+        
+        elif action == RIGHT and self.state[0] < 9:
+            nextState[0] += 1
+        
+        elif action == LEFT and self.state[0] > 0:
+            nextState[0] -= 1
             
         # add wind
         wind = [0,0,0,1,1,1,2,2,1,0]
-        current_wind = wind[self.state[1]]
-        nextState[0] -= current_wind
-        if nextState[0] < 0:
-            nextState[0] = 0
+        current_wind = wind[self.state[0]]
+        nextState[1] += current_wind
+        if nextState[1] > 6:
+            nextState[1] = 6
         
         if nextState == GOAL:
             goalReached = True
@@ -82,20 +81,20 @@ class environment:
         X is the current position
         '''
     
-        # make sure input is valid    
-        if (0 > self.state[0] > 6) or (0 > self.state[1] > 9):
-            print("Error! state out of range: ", self.state)
-            return -1
+#        # make sure input is valid    
+#        if (0 > self.state[0] > 6) or (0 > self.state[1] > 9):
+#            print("Error! state out of range: ", self.state)
+#            return -1
         
         if self.state == GOAL:
             print("SUCCESS!!!")
         
-        for row in range(7):
+        for y in range(6,-1,-1):
             print()
-            for col in range(10):
-                if [row, col] == self.state:
+            for x in range(10):
+                if [x, y] == self.state:
                     print(" X", end='')
-                elif [row, col] == GOAL:
+                elif [x, y] == GOAL:
                     print(" G", end='')
                 else:
                     print(" *", end='')
@@ -108,12 +107,12 @@ class environment:
         T is the goal / terminal state
         X is the path
         '''        
-        for row in range(7):
+        for y in range(6,-1,-1):
             print()
-            for col in range(10):
-                if [row, col] == GOAL:
+            for x in range(10):
+                if [x, y] == GOAL:
                     print(" G", end='')
-                elif [row,col] in self.path:
+                elif [x, y] in self.path:
                     print(" X", end='')
                 else:
                     print(" *", end='')
@@ -197,9 +196,8 @@ def renderStateValues(V, isActionValues=False):
     else:
         title = "State Values"
     
-    xd, yd = np.gradient(V)
     fig, ax = plt.subplots(1)
-    img = ax.imshow(V, cmap=plt.get_cmap('RdYlGn'))
+    img = ax.imshow(V.T, cmap=plt.get_cmap('RdYlGn'), origin='lower')
     fig.colorbar(img)
     ax.set_title(title)
     
@@ -209,8 +207,8 @@ def renderStateValues(V, isActionValues=False):
         if wind[x] == 0:
             continue
         
-        for y in range(2,7,2):
-            ax.arrow(x=x, y=y-0.3, dx=0, dy=0.6-wind[x],
+        for y in range(0, 5, 2):
+            ax.arrow(x=x, y=y+0.3, dx=0, dy=-0.6+wind[x],
                       width=0.03*wind[x],
                       head_width=0.15*wind[x],
                       head_length=0.35,
@@ -218,16 +216,16 @@ def renderStateValues(V, isActionValues=False):
                       ec='k')
     
     # mark Start and Goal
-    ax.text(x=GOAL[1],
-            y=GOAL[0], 
+    ax.text(x=GOAL[0],
+            y=GOAL[1], 
             s='G',
             horizontalalignment='center',
             verticalalignment='center',
             fontsize=18,
             color='blue')
     
-    ax.text(x=START[1],
-            y=START[0],
+    ax.text(x=START[0],
+            y=START[1],
             s='S',
             horizontalalignment='center',
             verticalalignment='center',
@@ -247,26 +245,26 @@ def moving_average(a, n=3) :
 # Defining the Reinforcement Learning algorithms
 
 def dynamicProgramming(maxDelta=0):
-    V = np.zeros((7,10))
+    V = np.zeros((10,7))
     env = environment()
     while True:
         delta = 0
         # loop over every state
-        for row in range(7):
-            for col in range(10):
-                value = V[row,col]
+        for y in range(7):
+            for x in range(10):
+                value = V[x, y]
                 next_values = []
                 # try every action in this state
                 for action in range(4):
                     # for dynamicPogramming we need to be able to change
                     # the state of the environment manualy:
-                    env.state = [row,col]
+                    env.state = [x,y]
                     nextState, reward, _ = env.step(action)
                     nextValue = V[nextState[0], nextState[1]] + reward
                     next_values.append(nextValue)
                     
-                V[row,col] = max(next_values)
-                delta = max(delta, abs(value-V[row,col]))
+                V[x, y] = max(next_values)
+                delta = max(delta, abs(value-V[x, y]))
         
         if delta <= maxDelta:
             break
@@ -276,7 +274,7 @@ def dynamicProgramming(maxDelta=0):
 
 
 def sarsa(alpha, epsilon, episodes, env, printRate=0):
-    Q = np.zeros((7,10,4))
+    Q = np.zeros((10,7,4))
     for episode in range(episodes):
         env.reset()
         t = 0
@@ -303,7 +301,7 @@ def sarsa(alpha, epsilon, episodes, env, printRate=0):
 
 
 def qLearning(alpha, epsilon, episodes, env, printRate=0):
-    Q = np.zeros((7,10,4))
+    Q = np.zeros((10,7,4))
     for episode in range(episodes):
         env.reset()
         t = 0
@@ -326,7 +324,7 @@ def qLearning(alpha, epsilon, episodes, env, printRate=0):
 
 
 def nStepSarsa(alpha, epsilon, n, episodes, env, printRate=0):
-    Q = np.zeros((7,10,4))
+    Q = np.zeros((10,7,4))
     for episode in range(episodes):
         env.reset()
         action = eGreedy(Q[env.state[0], env.state[1]], epsilon)
